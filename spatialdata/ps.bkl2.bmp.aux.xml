@@ -1,0 +1,15 @@
+<PAMDataset>
+  <SRS>GEOGCS[&quot;GCS_WGS_1984&quot;,DATUM[&quot;WGS_1984&quot;,SPHEROID[&quot;WGS_1984&quot;,6378137.0,298.257223563]],PRIMEM[&quot;Greenwich&quot;,0.0],UNIT[&quot;Degree&quot;,0.0174532925199433]]</SRS>
+  <Metadata>
+    <MDI key="PyramidResamplingType">NEAREST</MDI>
+  </Metadata>
+  <PAMRasterBand band="1">
+    <Metadata/>
+  </PAMRasterBand>
+  <PAMRasterBand band="2">
+    <Metadata/>
+  </PAMRasterBand>
+  <PAMRasterBand band="3">
+    <Metadata/>
+  </PAMRasterBand>
+</PAMDataset>
