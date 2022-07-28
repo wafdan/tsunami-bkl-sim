@@ -77,10 +77,10 @@ breed [motors motor]
 breed [cars car]
 
 humans-own [to-node cur-link speed]
-kids-own [dim speed to-node cur-link goal stage path backupath Len td initpos] ;td = time of departure
-teens-own [dim speed to-node cur-link goal stage path backupath Len td initpos]
-adults-own [dim speed to-node cur-link goal stage path backupath Len td initpos]
-elders-own [dim speed to-node cur-link goal stage path backupath Len td initpos]
+kids-own [dim speed to-node cur-link goal stage path Len td] ;td = time of departure
+teens-own [dim speed to-node cur-link goal stage path Len td]
+adults-own [dim speed to-node cur-link goal stage path Len td]
+elders-own [dim speed to-node cur-link goal stage path Len td]
 
 cars-own [to-node cur-link speed]
 motors-own [to-node cur-link speed]
@@ -180,36 +180,6 @@ to setup
     ifelse (load-file?)
     [
       import-world user-file
-      set korban-shelter 0
-      set korban-hilang 0 
-      set korban-shelter-kids 0
-      set korban-hilang-kids 0
-      set korban-shelter-teens 0
-      set korban-hilang-teens 0
-      set korban-shelter-adults 0
-      set korban-hilang-adults 0
-      set korban-shelter-elders 0
-      set korban-hilang-elders 0
-      set decided-kids 0
-      set decided-teens 0
-      set decided-adults 0
-      set decided-elders 0
-      let pedestrians (turtle-set kids teens adults elders)
-      ask pedestrians[
-        if(initpos != 0 and initpos != nobody)[
-        move-to initpos  
-        ]
-      ]
-      ask shelters [
-        set num-inside 0
-        set num-kids-ins 0
-        set num-teens-ins 0
-        set num-adults-ins 0
-        set num-elders-ins 0
-      ]
-      ask shelter-labels [set label (word "[0]")]
-      clear-ticks
-      reset-ticks
     ]
     [
       setup-paths-graph
@@ -236,17 +206,6 @@ to setup
     display
   ]
   set min-safe-distance 1
-  ;backup path IF ga kosong
-  let pedestrians (turtle-set kids teens adults elders)
-   ask pedestrians[
-;     if(path != nobody and path != [])
-;     [
-       set backupath []
-       set initpos first path
-       show-turtle
-;     ]
-   ]  
-
 end 
 
 ;; GO PROCEDURES 
@@ -254,7 +213,7 @@ to go
   ;if (count humans = 0 ) [ stop]
   ;ask humans [move-human speed]
   if (
-      ((count kids with [hidden? = false] = 0) and (count teens with [hidden? = false] = 0) and (count adults with [hidden? = false] = 0) and (count elders with [hidden? = false] = 0)) or
+      ((count kids = 0) and (count teens = 0) and (count adults = 0) and (count elders = 0)) or
       (count shelters with [ num-inside < capacity] = 0)
      )
   [ 
@@ -279,24 +238,6 @@ to go
        ]
      ]
      output-print "------------------"
-     
-     if(pragmagent)[
-       if(save-file?)[
-         let pedestrians (turtle-set kids teens adults elders)
-         ask pedestrians[
-             set path backupath
-         ]  
-         
-         ifelse (save-file-name = "")
-         [export-world (word "autosave-bkl-sim-export_" date-and-time "-pragma.csv")]
-         [ 
-           export-world (word save-file-name "-pragma.csv")
-          ]
-         
-       ]
-     ]
-     
-     
      stop
    ]
 ;  ask kids [move-kid speed]
@@ -341,18 +282,14 @@ to go
 ;]
    ifelse (pathfind-on-setup)
    [
-     if(not hidden?)[
-       follow-predefined-path
-     ]
+     follow-predefined-path
    ]
    [
-     if(not hidden?) [
-       decide-start
-       decide-shelter
-       decide-road
-       follow-path
-       search-shelter-route 
-     ]
+     decide-start
+     decide-shelter
+     decide-road
+     follow-path
+     search-shelter-route
    ]
    
    ;decide-road
@@ -362,18 +299,12 @@ to go
    ;search-shelter-route
    
    
-   if ((distance goal < min-safe-distance)) 
+   if ((distance goal < min-safe-distance))
    [ 
      if breed = kids [ set korban-shelter-kids korban-shelter-kids + 1]
      if breed = teens [ set korban-shelter-teens korban-shelter-teens + 1]
      if breed = adults [ set korban-shelter-adults korban-shelter-adults + 1]
      if breed = elders [ set korban-shelter-elders korban-shelter-elders + 1]
-     
-     ;"hantu" agen untuk diload
-     ;hide-turtle
-     if(initpos != nobody)[
-       move-to initpos
-     ]
      
      if (member? goal shelters)
      [ let ashelter min-one-of shelters [distance myself]
@@ -385,11 +316,7 @@ to go
        increment-in-exitpoint anexit
      ]
      
-     ask self [ 
-       ;stamp
-       hide-turtle
-       ;die
-       ]
+     ask self [die]
    ]
    
   ]
@@ -1365,83 +1292,79 @@ to follow-predefined-path
         ]
         if patch-here = next
          [ 
-           if(pragmagent) [
-             ;pengguncangan keteguhan, mulai.
-             let curpath first path
-             set backupath lput curpath backupath
-             ask curpath [
-               let goalinrange min-one-of shelters in-radius 10 [distance-nowrap self] 
-               
-               if (goalinrange != nobody)[ ;and
-                 ifelse(goalinrange != [goal] of myself) [
-                   
-                  ifelse([num-inside] of goalinrange < [capacity] of goalinrange) 
-                  [ 
-                    print (word myself " on " self " oldgoal: " [goal] of myself " goalinrange: " goalinrange) 
-                    print (word "old path: " [path] of myself )
-                     
-                    let newpath Astar curpath goalinrange white 4
-                    ask myself [ 
-                      set goal goalinrange 
-                      set path newpath 
-                      set backupath (sentence backupath newpath)
-                    ]
-                    print (word "new path: " [path] of myself )
-                  ]
-                  [ 
-                    let lowonggoal min-one-of (shelters with [ num-inside < capacity ]) [distance-nowrap self] 
-                    
-                    if(lowonggoal != nobody and lowonggoal != [goal] of myself and 
-                      distance lowonggoal < distance [goal] of myself) [
-                      
-                        let logoalroad min-one-of road-patches [distance lowonggoal]
-                        print (word "\n" myself " on " self " oldgoal: " [goal] of myself ", mau ke " goalinrange " penuh!, jadinya ke: " lowonggoal) 
-                        
-                        let newpathroad Astar curpath logoalroad green 4
-                        let newoffroadpath Astar logoalroad lowonggoal white 4
-                        
-                        ask myself [ 
-                           let joinedpath (sentence newpathroad newoffroadpath)
-                           set goal lowonggoal 
-                           set path joinedpath
-                           set backupath (sentence backupath joinedpath)
-                         ]
-                        
-                        print (word "new path gara2 penuh: " [path] of myself )
-                     ]
-                  ];end IF belum overflow
+           ;pengguncangan keteguhan, mulai.
+           let curpath first path
+           ask curpath [
+             let newgoal min-one-of shelters in-radius 10 [distance-nowrap self] 
+             
+             if (newgoal != nobody)[ ;and
+               ifelse(newgoal != [goal] of myself) [
                  
+               ifelse([num-inside] of newgoal < [capacity] of newgoal) 
+               [ 
+                 print (word myself " on " self " oldgoal: " [goal] of myself " newgoal: " newgoal) 
+                 print (word "old path: " [path] of myself )
+                  
+                 let newpath Astar curpath newgoal white 4
+                 ask myself [ 
+                   set goal newgoal 
+                   set path newpath 
+                 ]
+                 print (word "new path: " [path] of myself )
                ]
-               [
-                 if([num-inside] of goalinrange >= [capacity] of goalinrange) [ 
-                   let lowonggoal min-one-of (shelters with [ num-inside < capacity ]) [distance-nowrap myself] 
+               [ 
+                 let lowonggoal min-one-of (shelters with [ num-inside < capacity ]) [distance-nowrap self] 
+                 
+                 if(lowonggoal != nobody and lowonggoal != [goal] of myself and 
+                   distance lowonggoal < distance [goal] of myself) [
                    
-                   if(lowonggoal != nobody and lowonggoal != [goal] of myself) [
+                     let logoalroad min-one-of road-patches [distance lowonggoal]
+                     print (word "\n" myself " on " self " oldgoal: " [goal] of myself ", mau ke " newgoal " penuh!, jadinya ke: " lowonggoal) 
                      
-                       let logoalroad min-one-of road-patches [distance lowonggoal]
-                       print (word "\n" myself " on " self " oldgoal: " [goal] of myself ", mau ke " goalinrange " penuh!!!, jadinya ke: " lowonggoal) 
-                       
-                       let newpathroad Astar curpath logoalroad green 4
-                       let newoffroadpath Astar logoalroad lowonggoal white 4
-                       
-                       ask myself [ 
-                          set goal lowonggoal 
-                          set path (sentence newpathroad newoffroadpath)
-                        ]
-                       
-                       print (word "new path gara2 penuh: " [path] of myself )
-                    ]
-                 ];end IF belum overflow
-               ]  
+                     let newpathroad Astar curpath logoalroad green 4
+                     let newoffroadpath Astar logoalroad lowonggoal white 4
+                     
+                     ask myself [ 
+                        set goal lowonggoal 
+                        set path (sentence newpathroad newoffroadpath)
+                      ]
+                     
+                     print (word "new path gara2 penuh: " [path] of myself )
+                  ]
+               ];end IF belum overflow
+               
+             ]
+             [
+               if([num-inside] of newgoal >= [capacity] of newgoal) [ 
+                 let lowonggoal min-one-of (shelters with [ num-inside < capacity ]) [distance-nowrap myself] 
                  
-              ]
-                 
-             ];end ask curpath
-           ];end IF pragmagent
+                 if(lowonggoal != nobody and lowonggoal != [goal] of myself) [
+                   
+                     let logoalroad min-one-of road-patches [distance lowonggoal]
+                     print (word "\n" myself " on " self " oldgoal: " [goal] of myself ", mau ke " newgoal " penuh!!!, jadinya ke: " lowonggoal) 
+                     
+                     let newpathroad Astar curpath logoalroad green 4
+                     let newoffroadpath Astar logoalroad lowonggoal white 4
+                     
+                     ask myself [ 
+                        set goal lowonggoal 
+                        set path (sentence newpathroad newoffroadpath)
+                      ]
+                     
+                     print (word "new path gara2 penuh: " [path] of myself )
+                  ]
+               ];end IF belum overflow
+             ]  
+               
+            ]
+               
+           ]
            ;pengguncangan keteguhan, selesai.
            
+           ;end perubahan tujuan shelter
+           
            set path but-first path 
-         ]
+           ]
       ]
       [ ]
       ;[ set stage 4 set label (word who " [" stage "]")]
@@ -1988,7 +1911,7 @@ INPUTBOX
 256
 460
 save-file-name
-bkl-sim-6shelter-allroad-fix-10
+bkl-sim-2shelter-allroad-fix
 1
 0
 String
@@ -2033,7 +1956,7 @@ SWITCH
 296
 shltr-2
 shltr-2
-0
+1
 1
 -1000
 
@@ -2066,7 +1989,7 @@ SWITCH
 364
 shltr-5
 shltr-5
-0
+1
 1
 -1000
 
@@ -2088,7 +2011,7 @@ SWITCH
 397
 shltr-7
 shltr-7
-0
+1
 1
 -1000
 
@@ -2099,7 +2022,7 @@ SWITCH
 397
 shltr-8
 shltr-8
-0
+1
 1
 -1000
 
@@ -2202,17 +2125,6 @@ SWITCH
 510
 rep-gen
 rep-gen
-0
-1
--1000
-
-SWITCH
-795
-19
-918
-52
-pragmagent
-pragmagent
 0
 1
 -1000
